@@ -1,0 +1,62 @@
+name: Enhanced Auto Reconnaissance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest  # GitHub Actions runners use Ubuntu; adjust for compatibility
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sublist3r amass nmap subfinder
+          pip install requests
+
+      - name: Run Sublist3r
+        run: |
+          sublist3r -d linkedin.com -o sublist3r_results.txt
+
+      - name: Run Amass
+        run: |
+          amass enum -d yourtargetdomain.com -o amass_results.txt
+
+      - name: Run Subfinder
+        run: |
+          subfinder -d yourtargetdomain.com -o subfinder_results.txt
+
+      - name: Combine results
+        run: |
+          cat sublist3r_results.txt amass_results.txt subfinder_results.txt | sort -u > combined_subdomains.txt
+
+      - name: Run Nmap
+        run: |
+          nmap -iL combined_subdomains.txt -p 1-1000 -sV -oN nmap_results.txt
+
+      - name: Generate Reports
+        run: |
+          python3 generate_report.py combined_subdomains.txt subdomain_report.txt
+          python3 generate_report.py nmap_results.txt nmap_report.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: recon-results
+          path: |
+            subdomain_report.txt
+            nmap_report.txt
+
+      - name: Notify on results
+        run: |
+          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A subdomain_report.txt -A nmap_report.txt internetcafedzk@gmail.com.com
