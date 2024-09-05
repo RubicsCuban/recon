@@ -1,0 +1,75 @@
+name: Reconnaissance CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nmap wget unzip python3-pip golang-go
+
+      - name: Install Sublist3r
+        run: |
+          git clone https://github.com/aboul3la/Sublist3r.git
+          cd Sublist3r
+          pip3 install -r requirements.txt
+          sudo ln -s $(pwd)/sublist3r.py /usr/local/bin/sublist3r
+          cd ..
+
+      - name: Install Amass
+        run: |
+          wget https://github.com/owasp-amass/amass/releases/download/v3.25.3/amass_linux_amd64.zip
+          unzip amass_linux_amd64.zip
+          sudo mv amass_linux_amd64/amass /usr/local/bin/
+
+      - name: Install Subfinder
+        run: |
+          go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          sudo ln -s ~/go/bin/subfinder /usr/local/bin/subfinder
+
+      - name: Run Sublist3r
+        run: |
+          sublist3r -d linkedin.com -o sublist3r_results.txt
+
+      - name: Run Amass
+        run: |
+          amass enum -d linkedin.com -o amass_results.txt
+
+      - name: Run Subfinder
+        run: |
+          subfinder -d linkedin.com -o subfinder_results.txt
+
+      - name: Combine Results
+        run: |
+          cat sublist3r_results.txt amass_results.txt subfinder_results.txt | sort -u > combined_subdomains.txt
+
+      - name: Run Nmap
+        run: |
+          nmap -iL combined_subdomains.txt -p 1-1000 -sV -oN nmap_results.txt
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: recon-results
+          path: |
+            sublist3r_results.txt
+            amass_results.txt
+            subfinder_results.txt
+            combined_subdomains.txt
+            nmap_results.txt
+
+      - name: Notify on Results
+        run: |
+          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A sublist3r_results.txt -A amass_results.txt -A subfinder_results.txt -A combined_subdomains.txt -A nmap_results.txt internetcafedzk@gmail.com
