@@ -7,7 +7,7 @@ on:
 
 jobs:
   recon:
-    runs-on: ubuntu-latest  # GitHub Actions runners use Ubuntu; adjust for compatibility
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -21,8 +21,23 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y sublist3r amass nmap subfinder
-          pip install requests
+          sudo apt-get install -y nmap  # Install Nmap directly
+
+          # Install Sublist3r
+          git clone https://github.com/aboul3la/Sublist3r.git
+          cd Sublist3r
+          pip install -r requirements.txt
+          sudo ln -s $(pwd)/sublist3r.py /usr/local/bin/sublist3r
+          cd ..
+
+          # Install Amass
+          wget https://github.com/owasp-amass/amass/releases/download/v3.25.3/amass_linux_amd64.zip
+          unzip amass_linux_amd64.zip
+          sudo mv amass_linux_amd64/amass /usr/local/bin/
+
+          # Install Subfinder
+          GO111MODULE=on go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          sudo ln -s ~/go/bin/subfinder /usr/local/bin/subfinder
 
       - name: Run Sublist3r
         run: |
@@ -59,4 +74,4 @@ jobs:
 
       - name: Notify on results
         run: |
-          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A subdomain_report.txt -A nmap_report.txt internetcafedzk@gmail.com in_report.txt -A nmap_report.txt your-email@example.com
+          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A subdomain_report.txt -A nmap_report.txt internetcafedzk@gmail.com
