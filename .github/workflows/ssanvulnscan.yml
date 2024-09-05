@@ -16,12 +16,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8'
+          python-version: '3.9'  # Update to a compatible version
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y nmap  # Install Nmap directly
+          sudo apt-get install -y nmap wget unzip
 
           # Install Sublist3r
           git clone https://github.com/aboul3la/Sublist3r.git
@@ -36,7 +36,8 @@ jobs:
           sudo mv amass_linux_amd64/amass /usr/local/bin/
 
           # Install Subfinder
-          GO111MODULE=on go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          sudo apt-get install -y golang-go
+          go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
           sudo ln -s ~/go/bin/subfinder /usr/local/bin/subfinder
 
       - name: Run Sublist3r
@@ -45,7 +46,7 @@ jobs:
 
       - name: Run Amass
         run: |
-          amass enum -d linkedin.com -o amass_results.txt
+          amass enum -d likedin.com -o amass_results.txt
 
       - name: Run Subfinder
         run: |
@@ -74,4 +75,4 @@ jobs:
 
       - name: Notify on results
         run: |
-          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A subdomain_report.txt -A nmap_report.txt internetcafedzk@gmail.com
+          echo -e "Subject: Recon Results\n\nSubdomain and Nmap scan results have been generated. Check the attached reports." | mail -s "Recon Results" -A subdomain_report.txt -A nmap_report.txt .com
